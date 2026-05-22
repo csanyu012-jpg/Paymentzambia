@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iMali Pay — Mobile Money STK Push</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      --amber: #f59e0b;
+      --amber-dark: #d97706;
+      --green: #10b981;
+      --red: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #fef3c7 0%, #fff7ed 50%, #ecfdf5 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(245,158,11,0.15);
+      max-width: 460px;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 60%, #b45309 100%);
+      padding: 32px 28px 28px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: ''; position: absolute;
+      top: -40px; right: -40px;
+      width: 160px; height: 160px;
+      background: rgba(255,255,255,0.08); border-radius: 50%;
+    }
+    .header::after {
+      content: ''; position: absolute;
+      bottom: -30px; left: -30px;
+      width: 120px; height: 120px;
+      background: rgba(255,255,255,0.06); border-radius: 50%;
+    }
+    .logo { font-size: 32px; font-weight: 800; color: #fff; letter-spacing: -1px; position: relative; z-index: 1; }
+    .logo-sub { font-size: 13px; color: rgba(255,255,255,0.8); font-weight: 500; margin-top: 4px; position: relative; z-index: 1; }
+    .header-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.2); color: #fff;
+      font-size: 12px; font-weight: 600;
+      padding: 5px 14px; border-radius: 999px; margin-top: 14px;
+      position: relative; z-index: 1;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+    .dot-live { width: 7px; height: 7px; background: #4ade80; border-radius: 50%; animation: blink 1.4s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+    .form-body { padding: 28px; }
+    .form-title { font-size: 18px; font-weight: 700; color: #111827; margin-bottom: 6px; }
+    .form-subtitle { font-size: 13px; color: #6b7280; margin-bottom: 24px; }
+
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .field input {
+      width: 100%; border: 2px solid #e5e7eb; border-radius: 12px;
+      padding: 12px 14px; font-size: 15px; font-family: inherit;
+      color: #111827; outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .field input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
+    .field input.error { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.12); }
+    .field-hint { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+    .field-error { font-size: 11px; color: #ef4444; margin-top: 4px; display: none; }
+    .field-error.show { display: block; }
+
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .pay-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #fff; font-weight: 700; font-size: 16px;
+      padding: 15px; border: none; border-radius: 14px;
+      cursor: pointer; margin-top: 8px;
+      transition: transform .15s, box-shadow .15s, opacity .15s;
+      box-shadow: 0 4px 20px rgba(245,158,11,0.4);
+      font-family: inherit;
+    }
+    .pay-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(245,158,11,0.5); }
+    .pay-btn:active { transform: translateY(0); }
+    .pay-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* ── OVERLAY ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+      opacity: 0; pointer-events: none;
+      transition: opacity .3s;
+    }
+    .overlay.show { opacity: 1; pointer-events: all; }
+
+    .popup {
+      background: #fff; border-radius: 24px;
+      padding: 36px 32px; max-width: 380px; width: 90%;
+      text-align: center;
+      transform: scale(0.85) translateY(20px);
+      transition: transform .35s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+    }
+    .overlay.show .popup { transform: scale(1) translateY(0); }
+
+    /* ── SPINNER ── */
+    .spinner-wrap { width: 76px; height: 76px; margin: 0 auto 20px; position: relative; }
+    .spinner-wrap svg { position: absolute; inset: 0; animation: spin 1s linear infinite; }
+    .spinner-wrap .icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .popup-title { font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 8px; }
+    .popup-sub { font-size: 14px; color: #6b7280; line-height: 1.6; }
+    .popup-sub strong { color: #111827; }
+
+    .dots { display: flex; gap: 6px; justify-content: center; margin: 16px 0; }
+    .dots span {
+      width: 8px; height: 8px; border-radius: 50%; background: #fde68a;
+      animation: dotPulse 1.4s ease-in-out infinite;
+    }
+    .dots span:nth-child(2) { animation-delay: .2s; }
+    .dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes dotPulse {
+      0%,100%{background:#fde68a;transform:scale(1);}
+      50%{background:#f59e0b;transform:scale(1.4);}
+    }
+
+    .timer-bar { height: 4px; background: #fde68a; border-radius: 2px; margin: 14px 0 0; overflow: hidden; }
+    .timer-fill { height: 100%; background: linear-gradient(90deg,#f59e0b,#d97706); border-radius: 2px; width: 0; transition: width .5s linear; }
+
+    .poll-status { font-size: 12px; color: #9ca3af; margin-top: 10px; min-height: 18px; }
+
+    /* ── STATE ICONS ── */
+    .popup-icon { width: 76px; height: 76px; border-radius: 50%; margin: 0 auto 18px; display: flex; align-items: center; justify-content: center; font-size: 34px; }
+    .popup-icon.success { background: #d1fae5; animation: popIn .5s cubic-bezier(0.34,1.56,0.64,1); }
+    .popup-icon.failed  { background: #fee2e2; animation: popIn .5s cubic-bezier(0.34,1.56,0.64,1); }
+    .popup-icon.warning { background: #fef3c7; animation: popIn .5s cubic-bezier(0.34,1.56,0.64,1); }
+    @keyframes popIn { from{transform:scale(0.3);opacity:0;} to{transform:scale(1);opacity:1;} }
+
+    /* ── ERROR BOX ── */
+    .error-box {
+      background: #fef2f2; border: 1.5px solid #fecaca;
+      border-radius: 12px; padding: 14px 16px;
+      margin: 16px 0 0; text-align: left;
+    }
+    .error-box .err-label { font-size: 11px; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .error-box .err-msg { font-size: 13px; color: #7f1d1d; line-height: 1.5; word-break: break-word; }
+    .error-box .err-type { font-size: 11px; color: #ef4444; margin-top: 4px; font-family: monospace; }
+
+    /* ── RECEIPT ── */
+    .receipt-section { background: #f0fdf4; border-radius: 14px; padding: 16px; margin: 18px 0 0; text-align: left; }
+    .receipt-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
+    .receipt-row .lbl { color: #6b7280; }
+    .receipt-row .val { font-weight: 600; color: #111827; }
+
+    .receipt-btn {
+      display: block; width: 100%;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff; font-weight: 700; font-size: 15px;
+      padding: 13px; border: none; border-radius: 12px;
+      cursor: pointer; margin-top: 16px; text-decoration: none;
+      box-shadow: 0 4px 16px rgba(16,185,129,0.35);
+      transition: transform .15s, box-shadow .15s;
+      font-family: inherit;
+    }
+    .receipt-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(16,185,129,0.45); }
+
+    .retry-btn {
+      background: none; border: 2px solid #e5e7eb;
+      color: #374151; font-weight: 600; font-size: 14px;
+      padding: 11px; border-radius: 12px; cursor: pointer;
+      width: 100%; margin-top: 10px;
+      transition: border-color .2s, background .2s;
+      font-family: inherit;
+    }
+    .retry-btn:hover { border-color: #d1d5db; background: #f9fafb; }
+
+    .card-footer { padding: 12px 28px 20px; text-align: center; font-size: 11px; color: #9ca3af; }
+    .card-footer a { color: #f59e0b; text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="header">
+    <div class="logo">iMali</div>
+    <div class="logo-sub">Mobile Money Payments · Zambia</div>
+    <div class="header-badge"><span class="dot-live"></span> Live — MTN / Airtel STK Push</div>
+  </div>
+
+  <div class="form-body">
+    <div class="form-title">Initiate Payment</div>
+    <div class="form-subtitle">Enter details below. The customer will receive an STK push on their phone to confirm.</div>
+
+    <div class="field">
+      <label>Mobile Number (Zambia)</label>
+      <input type="tel" id="phone" placeholder="0977 000 111" />
+      <div class="field-hint">Accepts: 0977000111 · 260977000111 · +260977000111</div>
+      <div class="field-error" id="phone-err">Please enter a valid Zambia mobile number.</div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Amount (ZMW)</label>
+        <input type="number" id="amount" placeholder="50.00" min="0.01" step="0.01" />
+        <div class="field-error" id="amount-err">Enter a valid amount.</div>
+      </div>
+      <div class="field">
+        <label>Purpose <span style="font-weight:400;color:#9ca3af">(optional)</span></label>
+        <input type="text" id="purpose" placeholder="Invoice INV-1023" />
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Customer Name</label>
+        <input type="text" id="name" placeholder="Jane Doe" />
+        <div class="field-error" id="name-err">Name is required.</div>
+      </div>
+      <div class="field">
+        <label>Customer Email</label>
+        <input type="email" id="email" placeholder="jane@example.com" />
+        <div class="field-error" id="email-err">Valid email required.</div>
+      </div>
+    </div>
+
+    <button class="pay-btn" id="pay-btn" onclick="startPayment()">
+      ⚡ Send STK Push
+    </button>
+  </div>
+
+  <div class="card-footer">
+    Secured by <a href="https://imali.app" target="_blank">iMali</a> · Powered by Broos Action Inc
+  </div>
+</div>
+
+<!-- ── OVERLAY ── -->
+<div class="overlay" id="overlay">
+  <div class="popup" id="popup">
+
+    <!-- STATE: waking -->
+    <div id="state-waking">
+      <div class="spinner-wrap">
+        <svg viewBox="0 0 76 76" fill="none">
+          <circle cx="38" cy="38" r="34" stroke="#fde68a" stroke-width="6"/>
+          <path d="M38 4 A34 34 0 0 1 72 38" stroke="#f59e0b" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+        <div class="icon">☁️</div>
+      </div>
+      <div class="popup-title">Waking Server…</div>
+      <div class="popup-sub">The server is starting up on Render.<br>This takes up to <strong>30 seconds</strong> on first use.</div>
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div class="poll-status" id="wake-status">Connecting to server…</div>
+    </div>
+
+    <!-- STATE: processing -->
+    <div id="state-processing" style="display:none">
+      <div class="spinner-wrap">
+        <svg viewBox="0 0 76 76" fill="none">
+          <circle cx="38" cy="38" r="34" stroke="#fde68a" stroke-width="6"/>
+          <path d="M38 4 A34 34 0 0 1 72 38" stroke="#f59e0b" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+        <div class="icon">📲</div>
+      </div>
+      <div class="popup-title">Waiting for Confirmation</div>
+      <div class="popup-sub">STK push sent to<br><strong id="display-phone">+260977000111</strong>.<br>Customer must enter their mobile money PIN.</div>
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div class="timer-bar"><div class="timer-fill" id="timer-fill"></div></div>
+      <div class="poll-status" id="poll-status">Checking payment status…</div>
+    </div>
+
+    <!-- STATE: success -->
+    <div id="state-success" style="display:none">
+      <div class="popup-icon success">✅</div>
+      <div class="popup-title" style="color:#065f46">Payment Successful!</div>
+      <div class="popup-sub">The customer confirmed the payment.</div>
+      <div class="receipt-section">
+        <div class="receipt-row"><span class="lbl">Amount</span><span class="val" id="r-amount">—</span></div>
+        <div class="receipt-row"><span class="lbl">Phone</span><span class="val" id="r-phone">—</span></div>
+        <div class="receipt-row"><span class="lbl">Purpose</span><span class="val" id="r-purpose">—</span></div>
+        <div class="receipt-row"><span class="lbl">Status</span><span class="val" style="color:#10b981">Succeeded ✓</span></div>
+        <div class="receipt-row"><span class="lbl">Transaction ID</span><span class="val" id="r-id" style="font-size:11px;font-family:monospace">—</span></div>
+      </div>
+      <a id="receipt-link" href="#" target="_blank" class="receipt-btn">🧾 Open & Download Receipt</a>
+      <button class="retry-btn" onclick="resetForm()">Make Another Payment</button>
+    </div>
+
+    <!-- STATE: failed (payment) -->
+    <div id="state-failed" style="display:none">
+      <div class="popup-icon failed">❌</div>
+      <div class="popup-title" style="color:#991b1b">Payment Failed</div>
+      <div class="popup-sub" id="fail-reason">The customer declined or the request timed out.</div>
+      <button class="retry-btn" style="margin-top:20px" onclick="resetForm()">Try Again</button>
+    </div>
+
+    <!-- STATE: error (server/network error) -->
+    <div id="state-error" style="display:none">
+      <div class="popup-icon warning">⚠️</div>
+      <div class="popup-title" style="color:#92400e">Request Failed</div>
+      <div class="popup-sub">The server returned an error. See details below.</div>
+      <div class="error-box">
+        <div class="err-label">Error</div>
+        <div class="err-msg" id="err-msg">Unknown error</div>
+        <div class="err-type" id="err-type"></div>
+      </div>
+      <button class="retry-btn" style="margin-top:16px;border-color:#f59e0b;color:#92400e" onclick="resetForm()">← Back &amp; Try Again</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const SERVER = "https://server-7m9f.onrender.com";
+  const WAKE_TIMEOUT_MS = 55000;
+  const FETCH_TIMEOUT_MS = 60000;
+
+  let pollInterval = null;
+  let pollCount = 0;
+  const MAX_POLLS = 40;
+
+  // ── helpers ──────────────────────────────────────────────────────────────────
+  function showState(name) {
+    ["waking","processing","success","failed","error"].forEach(s => {
+      document.getElementById(`state-${s}`).style.display = s === name ? "" : "none";
+    });
+  }
+
+  function showError(message, type = "") {
+    document.getElementById("err-msg").textContent = message;
+    document.getElementById("err-type").textContent = type ? `type: ${type}` : "";
+    showState("error");
+  }
+
+  async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(id);
+      return res;
+    } catch (err) {
+      clearTimeout(id);
+      if (err.name === "AbortError") {
+        throw new Error("Request timed out after " + Math.round(timeoutMs/1000) + "s. The server may be sleeping — please try again in a moment.");
+      }
+      throw new Error("Cannot reach the server. Check that the backend is deployed at " + SERVER);
+    }
+  }
+
+  // ── validation ───────────────────────────────────────────────────────────────
+  function validate() {
+    let ok = true;
+    const phone = document.getElementById("phone").value.trim();
+    const digits = phone.replace(/\D/g, "");
+    const validPhone = (digits.startsWith("260") && digits.length === 12)
+      || (digits.startsWith("0") && digits.length === 10)
+      || (digits.length === 9);
+    document.getElementById("phone").classList.toggle("error", !validPhone);
+    document.getElementById("phone-err").classList.toggle("show", !validPhone);
+    if (!validPhone) ok = false;
+
+    const amount = parseFloat(document.getElementById("amount").value);
+    const validAmt = amount > 0;
+    document.getElementById("amount").classList.toggle("error", !validAmt);
+    document.getElementById("amount-err").classList.toggle("show", !validAmt);
+    if (!validAmt) ok = false;
+
+    const name = document.getElementById("name").value.trim();
+    document.getElementById("name").classList.toggle("error", !name);
+    document.getElementById("name-err").classList.toggle("show", !name);
+    if (!name) ok = false;
+
+    const email = document.getElementById("email").value.trim();
+    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    document.getElementById("email").classList.toggle("error", !validEmail);
+    document.getElementById("email-err").classList.toggle("show", !validEmail);
+    if (!validEmail) ok = false;
+
+    return ok;
+  }
+
+  function startTimerBar() {
+    const fill = document.getElementById("timer-fill");
+    let w = 0;
+    const step = 100 / MAX_POLLS;
+    return setInterval(() => {
+      w = Math.min(w + step, 98);
+      fill.style.width = w + "%";
+    }, 3000);
+  }
+
+  // ── main flow ─────────────────────────────────────────────────────────────────
+  async function startPayment() {
+    if (!validate()) return;
+
+    const phone   = document.getElementById("phone").value.trim();
+    const amount  = parseFloat(document.getElementById("amount").value);
+    const purpose = document.getElementById("purpose").value.trim();
+    const name    = document.getElementById("name").value.trim();
+    const email   = document.getElementById("email").value.trim();
+
+    document.getElementById("pay-btn").disabled = true;
+    showState("waking");
+    document.getElementById("overlay").classList.add("show");
+
+    // ── Step 1: wake the server & check iMali connectivity ──
+    try {
+      document.getElementById("wake-status").textContent = "Connecting to server (may take ~30s on first use)…";
+      const pingRes = await fetchWithTimeout(`${SERVER}/ping`, {}, WAKE_TIMEOUT_MS);
+      const pingData = await pingRes.json().catch(() => ({}));
+
+      if (pingData.imali === "unreachable") {
+        showError(
+          `Server is up but cannot reach the iMali API.\n\nDetails: ${pingData.imali_error ?? "unknown"}\n\nCheck that your API key is valid and that api.imali.app is reachable from your Render server.`,
+          "imali_unreachable"
+        );
+        document.getElementById("pay-btn").disabled = false;
+        return;
+      }
+      document.getElementById("wake-status").textContent = "Server is up! Sending STK push…";
+    } catch (err) {
+      showError(err.message, "network_error");
+      document.getElementById("pay-btn").disabled = false;
+      return;
+    }
+
+    // ── Step 2: send STK push ──
+    showState("processing");
+    document.getElementById("display-phone").textContent = phone;
+    document.getElementById("poll-status").textContent = "Sending STK push to phone…";
+    const timerInterval = startTimerBar();
+
+    let intentId = null;
+    try {
+      const res = await fetchWithTimeout(`${SERVER}/stk-push`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone,
+          amount,
+          currency: "ZMW",
+          purpose: purpose || "Payment",
+          customer: { name, email },
+        }),
+      });
+
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        clearInterval(timerInterval);
+        showError(`Server responded with status ${res.status} but no JSON body. Check server logs on Render.`, "parse_error");
+        document.getElementById("pay-btn").disabled = false;
+        return;
+      }
+
+      if (!res.ok || data?.error) {
+        clearInterval(timerInterval);
+        const msg  = data?.error?.message ?? `HTTP ${res.status} from server`;
+        const type = data?.error?.type    ?? `http_${res.status}`;
+        showError(msg, type);
+        document.getElementById("pay-btn").disabled = false;
+        return;
+      }
+
+      intentId = data.id;
+      document.getElementById("poll-status").textContent = "STK push sent — waiting for PIN confirmation…";
+
+    } catch (err) {
+      clearInterval(timerInterval);
+      showError(err.message, "network_error");
+      document.getElementById("pay-btn").disabled = false;
+      return;
+    }
+
+    // ── Step 3: poll for status ──
+    pollCount = 0;
+    pollInterval = setInterval(async () => {
+      pollCount++;
+      document.getElementById("poll-status").textContent =
+        `Checking payment status… (${pollCount}/${MAX_POLLS})`;
+
+      try {
+        const sr = await fetchWithTimeout(`${SERVER}/payment-status/${intentId}`, {}, 10000);
+        const sd = await sr.json();
+        const status = sd?.intent?.status ?? sd?.status;
+
+        if (status === "succeeded") {
+          clearInterval(pollInterval);
+          clearInterval(timerInterval);
+          document.getElementById("timer-fill").style.width = "100%";
+          document.getElementById("timer-fill").style.background = "#10b981";
+          document.getElementById("r-amount").textContent = `ZMW ${amount.toFixed(2)}`;
+          document.getElementById("r-phone").textContent = sd?.intent?.metadata?.momo_phone ?? phone;
+          document.getElementById("r-purpose").textContent = purpose || "Payment";
+          document.getElementById("r-id").textContent = intentId;
+          document.getElementById("receipt-link").href = `${SERVER}/receipt/${intentId}`;
+          showState("success");
+
+        } else if (status === "failed" || status === "canceled") {
+          clearInterval(pollInterval);
+          clearInterval(timerInterval);
+          document.getElementById("fail-reason").textContent =
+            "The customer declined or the STK push timed out on their phone. Please try again.";
+          showState("failed");
+
+        } else if (pollCount >= MAX_POLLS) {
+          clearInterval(pollInterval);
+          clearInterval(timerInterval);
+          document.getElementById("fail-reason").textContent =
+            "No confirmation received after 2 minutes. The STK push may have expired — please try again.";
+          showState("failed");
+        }
+      } catch {
+        // silent retry on poll errors
+      }
+    }, 3000);
+  }
+
+  function resetForm() {
+    clearInterval(pollInterval);
+    document.getElementById("overlay").classList.remove("show");
+    document.getElementById("pay-btn").disabled = false;
+    document.getElementById("timer-fill").style.width = "0";
+    document.getElementById("timer-fill").style.background = "";
+    document.getElementById("poll-status").textContent = "Checking payment status…";
+    pollCount = 0;
+    showState("waking");
+  }
+
+  document.getElementById("overlay").addEventListener("click", function(e) {
+    if (e.target !== this) return;
+    const processing = document.getElementById("state-processing").style.display !== "none";
+    const waking = document.getElementById("state-waking").style.display !== "none";
+    if (!processing && !waking) resetForm();
+  });
+</script>
+</body>
+</html>
